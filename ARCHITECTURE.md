@@ -214,7 +214,7 @@ All auth via `x-api-key` header.
 - `DELETE /api/assets` with `{ ids:[...], force: false }` → trash (not hard-delete). Plural path.
 - `POST /api/search/metadata` (paginated) → lists assets including `checksum`. Default visibility excludes `hidden`; pass `visibility` to filter explicitly. To get all visibilities, iterate.
 - `POST /api/trash/restore/assets` with `{ ids:[...] }` → restore.
-- `POST /api/tags` → upsert tag by name.
+- `PUT /api/tags` → upsert tag by full path (`POST` rejects "/" in names).
 - `PUT /api/tags/assets` → bulk-tag assets.
 - `GET /api/tags` → list tags (needs `tag.read`).
 - `POST /api/sync/stream` → JSONL change-event stream. **Unreachable

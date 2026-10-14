@@ -516,13 +516,28 @@ public struct ImmichClient: Sendable {
 
     // MARK: - Tags (breadcrumbs)
 
-    /// `POST /api/tags` — upsert-by-value. Returning an existing tag
-    /// when the name matches lets trash runs safely call this without a
-    /// lookup-then-create race. cairn uses tags named
+    /// `PUT /api/tags` — upsert-by-value. Returning an existing tag
+    /// when the value matches lets trash runs safely call this without a
+    /// lookup-then-create race. cairn uses tags valued
     /// `cairn/v1/run/<run_id>` as per-run breadcrumbs on the server.
+    ///
+    /// Not `POST /api/tags`: that endpoint takes a single path segment
+    /// (`name` + `parentId`) and current Immich rejects slashes with a
+    /// 400. `PUT` takes full paths, creates the parent tags
+    /// (`cairn`, `cairn/v1`, …) as needed, and returns one leaf tag per
+    /// requested value. Same `tag.create` permission.
     public func upsertTag(value: String) async throws -> ImmichTag {
-        let body: [String: Any] = ["name": value]
-        let dto: TagDTO = try await postJSON(path: "tags", jsonObject: body)
+        var req = try makeRequest(method: "PUT", path: "tags")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["tags": [value]])
+        let (data, resp) = try await session.data(for: req)
+        try Self.expectOK(resp, data: data)
+        let dtos = try JSONDecoder().decode([TagDTO].self, from: data)
+        // Immich trims empty segments, so match ignoring a trailing slash.
+        let wanted = value.hasSuffix("/") ? String(value.dropLast()) : value
+        guard let dto = dtos.first(where: { $0.value == wanted }) ?? dtos.last else {
+            throw ImmichClientError.unexpectedResponse("PUT /tags returned no tag for \(value)")
+        }
         return dto.asImmichTag
     }
 

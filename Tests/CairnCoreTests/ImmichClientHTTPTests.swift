@@ -300,6 +300,44 @@ struct ImmichClientHTTPTests {
         #expect(json["force"] == nil)
     }
 
+    /// Current Immich 400s `POST /api/tags` when `name` contains "/";
+    /// slash-path tags must go through `PUT /api/tags`.
+    @Test("upsertTag PUTs the full path to /api/tags and returns the leaf tag")
+    func upsertTagUsesPutWithPath() async throws {
+        let (client, mock) = makeClient()
+        let seenMethod = Ref<String?>(nil)
+        let seenBody = Ref<Data>(Data())
+        mock.handler = { req in
+            seenMethod.value = req.httpMethod
+            #expect(req.url?.path == "/api/tags")
+            seenBody.value = req.readBody()
+            let json = """
+            [{"id":"leaf","parentId":"p","name":"abc","value":"cairn/v1/run/abc","createdAt":"2026-04-21T00:00:00.000Z"}]
+            """
+            return (HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data(json.utf8))
+        }
+        let tag = try await client.upsertTag(value: "cairn/v1/run/abc")
+        #expect(seenMethod.value == "PUT")
+        let json = try JSONSerialization.jsonObject(with: seenBody.value) as! [String: Any]
+        #expect(json["tags"] as? [String] == ["cairn/v1/run/abc"])
+        #expect(json["name"] == nil)
+        #expect(tag.id == "leaf")
+        #expect(tag.value == "cairn/v1/run/abc")
+    }
+
+    @Test("upsertTag surfaces a 400 as httpStatus")
+    func upsertTagSurfacesHTTPError() async throws {
+        let (client, mock) = makeClient()
+        mock.handler = { req in
+            (HTTPURLResponse(url: req.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!,
+             Data(#"{"message":"Validation failed"}"#.utf8))
+        }
+        await #expect(throws: ImmichClientError.self) {
+            _ = try await client.upsertTag(value: "cairn/v1/run/abc")
+        }
+    }
+
     @Test("listTags GETs /api/tags and parses the response array")
     func listTagsParsesArray() async throws {
         let (client, mock) = makeClient()
