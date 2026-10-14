@@ -45,6 +45,37 @@ jobs:
           fi
           exit 1
 
+  unsigned-ipa:
+    name: Unsigned device IPA (for SideStore)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: brew install xcodegen
+      - name: Generate project
+        working-directory: iOS
+        run: xcodegen generate
+      - name: Build for device, unsigned
+        run: |
+          set -o pipefail
+          xcodebuild -project iOS/Cairn.xcodeproj -scheme Cairn -configuration Release \
+            -destination "generic/platform=iOS" -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee /tmp/ipa.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" /tmp/ipa.log
+      - name: Package IPA
+        run: |
+          app=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          mkdir -p Payload && cp -R "$app" Payload/
+          zip -qry cairn-reverse-deletes-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cairn-reverse-deletes-unsigned-ipa
+          path: cairn-reverse-deletes-unsigned.ipa
+          retention-days: 14
+
   ios-build:
     name: iOS app build (simulator, unsigned)
     # Newest image: the app target needs a recent Swift 6 toolchain.
