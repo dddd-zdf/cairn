@@ -99,9 +99,8 @@ extension AppDependencies {
         let liveCount = await Task.detached(priority: .userInitiated) {
             PhotoKitLocalAssetDeleter.liveUserLibraryIdentifiers().count
         }.value
-        let localJournal = LocalDeleteJournal(
-            path: journal.path.deletingLastPathComponent().appending(path: LocalDeleteJournal.fileName)
-        )
+        let journalDir = await journal.path.deletingLastPathComponent()
+        let localJournal = LocalDeleteJournal(path: journalDir.appending(path: LocalDeleteJournal.fileName))
         let runId = "phone-\(ISO8601DateFormatter().string(from: Date()))-\(UUID().uuidString.prefix(8))"
         let summary = try await LocalDeleteOrchestrator(deleter: PhotoKitLocalAssetDeleter(), journal: localJournal).run(
             runId: runId,

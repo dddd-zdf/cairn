@@ -6,7 +6,7 @@ import Foundation
 /// untouched. Lives next to `deletion-journal.jsonl` in the same
 /// per-account directory.
 public actor LocalDeleteJournal {
-    public let path: URL
+    public nonisolated let path: URL
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
