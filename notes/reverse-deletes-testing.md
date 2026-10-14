@@ -5,12 +5,22 @@ with no Mac, so nothing here has run on a device or simulator.
 
 ## What was checked
 
-- `swift build` + `swift test` on the fork's GitHub Actions (macOS runner,
-  `.github/workflows/fork-ci.yml`). Covers the matcher rules, the size
-  limit, the orchestrator + journal, the client request shape, and the
-  settings default.
-- Unsigned iOS Simulator build of the app target in the same workflow.
-  Proves it compiles, nothing more.
+- `swift build` + `swift test` on the fork's GitHub Actions
+  (`.github/workflows/fork-ci.yml`, macos-15, Swift 6.2.4). The new and
+  touched suites (ServerTrashMatcher, LocalDeleteOrchestrator,
+  ImmichClient.listTrashedAssets, CairnSettings) run in a filtered step
+  with no crash tolerance: 62 tests, all pass. They cover the matcher
+  rules, the size limit, the orchestrator + journal, the client request
+  shape, and the settings default.
+- The full `swift test` run crashes with signal 5 before tests report,
+  on unmodified `main` too (checked with a baseline run). ci.yml's
+  "teardown" tolerance hides it, so a green full run only proves the
+  tests compile. Pre-existing; not caused by this branch.
+- Unsigned iOS Simulator build of the app target (macos-26, Swift
+  6.3.3): succeeds. Proves it compiles, nothing more. On macos-15 /
+  Swift 6.2.4 the app target fails on existing code
+  (`AppDependencies.swift:126`, "sending 'self' risks causing data
+  races"), also unrelated to this branch.
 - Request shape against the Immich OpenAPI spec (3.3.0-rc): flat
   `trashedAfter` / `withDeleted` / `visibility` are deprecated since 3.2
   but present. Difei confirmed earlier they still work on Immich 3.3.1.
