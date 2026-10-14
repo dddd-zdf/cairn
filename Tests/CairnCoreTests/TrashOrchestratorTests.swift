@@ -25,10 +25,6 @@ fileprivate func eventName(_ event: JournalEntry.Event) -> String {
     case .syncCompleted: return "syncCompleted"
     case .syncTransitions: return "syncTransitions"
     case .syncStarted: return "syncStarted"
-    case .localDeletePlanned: return "localDeletePlanned"
-    case .localDeleteSucceeded: return "localDeleteSucceeded"
-    case .localDeleteFailed: return "localDeleteFailed"
-    case .localDeleteAborted: return "localDeleteAborted"
     }
 }
 

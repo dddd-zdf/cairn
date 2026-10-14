@@ -313,14 +313,6 @@ public struct CairnSettings: Sendable, Codable, Equatable {
     /// while off, just limited to the current process's OSLog buffer.
     public var persistentDiagnosticLogging: Bool
 
-    /// Reverse direction, opt-in: offer to remove photos from the iPhone
-    /// when their Immich copy was moved to trash (e.g. deleted on the
-    /// web). Off by default. Even when on, nothing is deleted without
-    /// the user starting it from the review sheet, and iOS asks once
-    /// more before anything moves to Recently Deleted. See
-    /// `ServerTrashMatcher` for the matching rules.
-    public var mirrorServerTrashToPhone: Bool
-
     public init(
         maxDeletePercent: Double = 1.0,
         minDeleteFloor: Int = 5,
@@ -342,8 +334,7 @@ public struct CairnSettings: Sendable, Codable, Equatable {
         fastInitialScan: Bool = false,
         propagationMaxAgeDays: Int? = nil,
         keepScreenAwakeDuringSync: Bool = true,
-        persistentDiagnosticLogging: Bool = false,
-        mirrorServerTrashToPhone: Bool = false
+        persistentDiagnosticLogging: Bool = false
     ) {
         self.maxDeletePercent = maxDeletePercent
         self.minDeleteFloor = minDeleteFloor
@@ -366,7 +357,6 @@ public struct CairnSettings: Sendable, Codable, Equatable {
         self.propagationMaxAgeDays = propagationMaxAgeDays
         self.keepScreenAwakeDuringSync = keepScreenAwakeDuringSync
         self.persistentDiagnosticLogging = persistentDiagnosticLogging
-        self.mirrorServerTrashToPhone = mirrorServerTrashToPhone
     }
 
     /// The factory defaults. Kept as a single constant so tests and the
@@ -391,7 +381,6 @@ public struct CairnSettings: Sendable, Codable, Equatable {
         case propagationMaxAgeDays
         case keepScreenAwakeDuringSync
         case persistentDiagnosticLogging
-        case mirrorServerTrashToPhone
     }
 
     public init(from decoder: Decoder) throws {
@@ -418,7 +407,6 @@ public struct CairnSettings: Sendable, Codable, Equatable {
         self.propagationMaxAgeDays = try c.decodeIfPresent(Int.self, forKey: .propagationMaxAgeDays) ?? d.propagationMaxAgeDays
         self.keepScreenAwakeDuringSync = try c.decodeIfPresent(Bool.self, forKey: .keepScreenAwakeDuringSync) ?? d.keepScreenAwakeDuringSync
         self.persistentDiagnosticLogging = try c.decodeIfPresent(Bool.self, forKey: .persistentDiagnosticLogging) ?? d.persistentDiagnosticLogging
-        self.mirrorServerTrashToPhone = try c.decodeIfPresent(Bool.self, forKey: .mirrorServerTrashToPhone) ?? d.mirrorServerTrashToPhone
     }
 }
 

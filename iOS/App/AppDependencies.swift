@@ -503,6 +503,7 @@ final class AppDependencies {
         // displays at low-confidence tier until session-only data
         // dominates — see comments on `model.persistedSyncRate`.
         model.persistedSyncRate = Self.loadPersistedSyncRate()
+        configureReverseDelete() // fork: reverse deletes
 
         // Keychain reads can fail in three structurally-different ways
         // that an unguarded `try?` flattens together:
@@ -4438,6 +4439,7 @@ final class AppDependencies {
                     // here will already have its trashed assets
                     // reflected in the next sync.
                     await self.drainPendingTrashes(force: false)
+                    await ReverseDeleteController.shared.syncDidFinish() // fork: reverse deletes
                 } catch is CancellationError {
                     await MainActor.run {
                         // Idempotent unwind. `CairnAppRoot.cancelActiveSync`
@@ -6041,75 +6043,6 @@ final class AppDependencies {
                     )
                     throw error
                 }
-            },
-            findServerTrashMatches: { [weak self] lookbackDays in
-                guard let self,
-                      let client = await self.immichClient,
-                      let observed = await self.observedStore,
-                      let exclusions = await self.exclusionStore,
-                      let journal = await self.journal else { return .empty }
-                let scope = await self.model.settings.indexingScope
-                let since = Date().addingTimeInterval(-Double(lookbackDays) * 86_400)
-                let trashed = try await client.listTrashedAssets(trashedAfter: since)
-
-                let liveIds = await Task.detached(priority: .userInitiated) {
-                    PhotoKitLocalAssetDeleter.liveUserLibraryIdentifiers()
-                }.value
-                let hashes = try await self.localHashStore.snapshot().filter { liveIds.contains($0.key) }
-                let editStore = await self.editRetirementStore
-                let firstObserved = (try? await editStore?.snapshot()) ?? [:]
-                let imputed = (try? await self.localHashStore.imputedIdentifiers()) ?? []
-                let inPurview: Set<Checksum>
-                switch scope {
-                case .fullLibrary:
-                    inPurview = try await observed.snapshot()
-                case .selectedAlbums(let albumIds):
-                    inPurview = Set(try await observed.snapshotWithTags()
-                        .filter { !$0.value.isDisjoint(with: albumIds) }
-                        .keys)
-                }
-                let excluded = Set(try await exclusions.snapshot().keys)
-                // Archive included: a cairn trash older than the live
-                // journal's protect window can still be in Immich's trash.
-                let journalEntries = ((try? await journal.readArchive()) ?? []) + ((try? await journal.readAll()) ?? [])
-                let trashedByCairn = Set(JournalReader.recentlyTrashedChecksums(in: journalEntries, withinDays: 60).keys)
-
-                let match = ServerTrashMatcher.match(ServerTrashMatchInput(
-                    trashedServerAssets: trashed,
-                    liveLocalHashes: hashes,
-                    firstObserved: firstObserved,
-                    imputedIdentifiers: imputed,
-                    inPurview: inPurview,
-                    excluded: excluded,
-                    trashedByCairn: trashedByCairn
-                ))
-                return ServerTrashReview(
-                    candidates: match.candidates,
-                    skipped: match.skipped,
-                    trashedOnServer: trashed.count,
-                    lookbackDays: lookbackDays,
-                    liveLibraryCount: liveIds.count
-                )
-            },
-            deleteServerTrashMatches: { [weak self] candidates in
-                guard let self,
-                      let journal = await self.journal,
-                      !candidates.isEmpty else { return [] }
-                let liveCount = await Task.detached(priority: .userInitiated) {
-                    PhotoKitLocalAssetDeleter.liveUserLibraryIdentifiers().count
-                }.value
-                let runId = "phone-\(ISO8601DateFormatter().string(from: Date()))-\(UUID().uuidString.prefix(8))"
-                let orchestrator = LocalDeleteOrchestrator(deleter: PhotoKitLocalAssetDeleter(), journal: journal)
-                defer { Task { await self.refreshJournalTail() } }
-                let summary = try await orchestrator.run(
-                    runId: runId,
-                    candidates: candidates,
-                    liveLibraryCount: liveCount
-                )
-                if let reason = summary.abortReason {
-                    throw LocalDeleteError.failed(reason)
-                }
-                return summary.deletedLocalIdentifiers
             },
             simulateBackgroundRefresh: { [weak self] in
                 guard let self else { return }

@@ -26,8 +26,8 @@ jobs:
       - run: swift --version
       - run: swift build
       - name: swift test (reverse-deletes suites only, no crash tolerance)
-        if: ${{ hashFiles('Sources/CairnCore/ServerTrashMatcher.swift') != '' }}
-        run: swift test --filter "ServerTrashMatcher|LocalDeleteOrchestrator|ImmichClientTrashed|CairnSettingsTests"
+        if: ${{ hashFiles('Sources/CairnCore/ReverseDelete/ServerTrashMatcher.swift') != '' }}
+        run: swift test --filter "ServerTrashMatcher|LocalDeleteOrchestrator|ImmichClientTrashed|ServerTrashCheckPolicy"
       - name: swift test
         # Same signal-5 teardown tolerance as ci.yml.
         run: |

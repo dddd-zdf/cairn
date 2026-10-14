@@ -7,24 +7,24 @@ import CairnCore
 /// screen lists the matches and hands the reviewed set back for
 /// deletion. iOS shows its own confirmation after "Delete".
 ///
-/// States mirror `model.serverTrashReviewState`.
+/// States mirror `ReverseDeleteController.reviewState`.
 public struct ServerTrashReviewSheet: View {
 
-    public let state: CairnAppModel.ServerTrashReviewState
+    public let state: ReverseDeleteController.ReviewState
     public let onClose: () -> Void
     public let onScan: (_ lookbackDays: Int) -> Void
     public let onDelete: (_ candidates: [LocalDeleteCandidate]) -> Void
     public let onKeep: (_ candidates: [LocalDeleteCandidate]) -> Void
 
     @Environment(\.cairnTokens) private var t
-    @State private var lookbackDays: Int = 7
+    @State private var lookbackDays: Int = ServerTrashCheckPolicy.lookbackDays
     @State private var skippedIds: Set<String> = []
     @State private var pendingDelete = false
     @State private var pendingKeep = false
     @State private var zoomed: LocalDeleteCandidate?
 
     public init(
-        state: CairnAppModel.ServerTrashReviewState = .idle,
+        state: ReverseDeleteController.ReviewState = .idle,
         onClose: @escaping () -> Void = {},
         onScan: @escaping (Int) -> Void = { _ in },
         onDelete: @escaping ([LocalDeleteCandidate]) -> Void = { _ in },

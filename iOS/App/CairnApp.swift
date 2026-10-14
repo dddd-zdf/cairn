@@ -61,6 +61,7 @@ struct CairnApp: App {
         // every launch.
         CairnFonts.registerBundledFonts()
         registerBackgroundTasks()
+        ReverseDeleteNotificationRouter.install() // fork: reverse deletes
         // The persistent OSLog flusher is NO LONGER started here. It's
         // gated behind `CairnSettings.persistentDiagnosticLogging` (off by
         // default) and started from `bootstrap()` once settings load (and

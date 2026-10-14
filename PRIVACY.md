@@ -40,7 +40,6 @@ Only requests to your configured Immich server, signed with your API key:
 - `POST /api/tags` + `PUT /api/tags/assets` — write run breadcrumbs.
 - `DELETE /api/assets` with `force: false` — move asset(s) to your Immich Trash (not permanent deletion).
 - `POST /api/trash/restore/assets` — undo.
-- `POST /api/search/metadata` with `trashedAfter` — only if you turn on the optional "Delete on iPhone what's trashed on Immich" setting and start a review. Lists what's in your Immich trash so `cairn` can match it to photos on your iPhone. Any deletion on the iPhone goes through iOS's own confirmation prompt and lands in Recently Deleted.
 - `GET /api/thumbnail/<id>` — fetch thumbnails for the candidate review UI.
 
 `cairn` does not contact any other host. There is no "`cairn` backend," no third-party SDK, no analytics endpoint, no remote configuration. Your Immich server is the only thing `cairn` talks to.

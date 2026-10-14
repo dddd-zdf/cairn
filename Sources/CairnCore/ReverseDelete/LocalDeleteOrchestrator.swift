@@ -8,24 +8,24 @@ public struct LocalDeleteRunSummary: Sendable, Equatable {
 }
 
 /// Deletes phone assets whose Immich copies are in Immich's trash, and
-/// journals the run. Sequence:
+/// journals the run to `LocalDeleteJournal`. Sequence:
 ///
 /// 1. Re-run `ServerTrashMatcher.evaluate`. Over the limit → journal
-///    `localDeleteAborted` and return without touching the library.
-/// 2. Journal `localDeletePlanned` (write-ahead).
+///    `aborted` and return without touching the library.
+/// 2. Journal `planned` (write-ahead).
 /// 3. One `LocalAssetDeleter.deleteAssets` call. Journal
-///    `localDeleteSucceeded` or `localDeleteFailed` (including the user
+///    `succeeded` or `failed` (including the user
 ///    declining the system prompt), then rethrow failures.
 ///
 /// The caller is responsible for the user having reviewed `candidates`.
 public struct LocalDeleteOrchestrator: Sendable {
     public let deleter: LocalAssetDeleter
-    public let journal: DeletionJournal
+    public let journal: LocalDeleteJournal
     public let now: @Sendable () -> Date
 
     public init(
         deleter: LocalAssetDeleter,
-        journal: DeletionJournal,
+        journal: LocalDeleteJournal,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.deleter = deleter
@@ -48,12 +48,12 @@ public struct LocalDeleteOrchestrator: Sendable {
             liveLibraryCount: liveLibraryCount,
             limits: limits
         ) {
-            try await journal.append(JournalEntry(timestamp: now(), runId: runId, event: .localDeleteAborted(reason: reason)))
+            try await journal.append(LocalDeleteJournalEntry(timestamp: now(), runId: runId, event: .aborted(reason: reason)))
             return LocalDeleteRunSummary(runId: runId, deletedLocalIdentifiers: [], aborted: true, abortReason: reason)
         }
 
         let targets = candidates.map {
-            JournalEntry.LocalDeleteTarget(
+            LocalDeleteJournalEntry.Target(
                 localIdentifier: $0.localIdentifier,
                 checksums: $0.checksums.map(\.base64).sorted(),
                 serverAssetId: $0.serverAsset.id,
@@ -61,25 +61,25 @@ public struct LocalDeleteOrchestrator: Sendable {
                 fileCreatedAt: $0.serverAsset.fileCreatedAt
             )
         }
-        try await journal.append(JournalEntry(timestamp: now(), runId: runId, event: .localDeletePlanned(targets: targets)))
+        try await journal.append(LocalDeleteJournalEntry(timestamp: now(), runId: runId, event: .planned(targets: targets)))
 
         let ids = candidates.map(\.localIdentifier)
         let started = now()
         do {
             let deleted = try await deleter.deleteAssets(localIdentifiers: ids)
             let ms = Int((now().timeIntervalSince(started) * 1000).rounded())
-            try await journal.append(JournalEntry(
+            try await journal.append(LocalDeleteJournalEntry(
                 timestamp: now(),
                 runId: runId,
-                event: .localDeleteSucceeded(localIdentifiers: deleted, durationMs: ms)
+                event: .succeeded(localIdentifiers: deleted, durationMs: ms)
             ))
             return LocalDeleteRunSummary(runId: runId, deletedLocalIdentifiers: deleted, aborted: false, abortReason: nil)
         } catch {
             let message = (error as? LocalDeleteError)?.description ?? String(describing: error)
-            try? await journal.append(JournalEntry(
+            try? await journal.append(LocalDeleteJournalEntry(
                 timestamp: now(),
                 runId: runId,
-                event: .localDeleteFailed(localIdentifiers: ids, message: message)
+                event: .failed(localIdentifiers: ids, message: message)
             ))
             throw error
         }

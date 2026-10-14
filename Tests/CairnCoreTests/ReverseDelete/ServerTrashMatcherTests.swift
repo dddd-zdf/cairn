@@ -216,8 +216,8 @@ actor FakeDeleter: LocalAssetDeleter {
 @Suite("LocalDeleteOrchestrator")
 struct LocalDeleteOrchestratorTests {
 
-    private func tempJournal() -> DeletionJournal {
-        DeletionJournal(path: URL(fileURLWithPath: NSTemporaryDirectory()).appending(path: "localdel-\(UUID().uuidString).jsonl"))
+    private func tempJournal() -> LocalDeleteJournal {
+        LocalDeleteJournal(path: URL(fileURLWithPath: NSTemporaryDirectory()).appending(path: "localdel-\(UUID().uuidString).jsonl"))
     }
 
     private func candidate(_ id: String) -> LocalDeleteCandidate {
@@ -238,10 +238,10 @@ struct LocalDeleteOrchestratorTests {
         #expect(await deleter.calls == [["1", "2"]])
         let entries = try await journal.readAll()
         #expect(entries.count == 2)
-        guard case .localDeletePlanned(let targets) = entries[0].event else { Issue.record("expected planned"); return }
+        guard case .planned(let targets) = entries[0].event else { Issue.record("expected planned"); return }
         #expect(targets.map(\.serverAssetId) == ["srv-1", "srv-2"])
         #expect(targets[0].originalFileName == "IMG_1.HEIC")
-        guard case .localDeleteSucceeded(let ids, _) = entries[1].event else { Issue.record("expected succeeded"); return }
+        guard case .succeeded(let ids, _) = entries[1].event else { Issue.record("expected succeeded"); return }
         #expect(ids == ["1", "2"])
     }
 
@@ -256,7 +256,7 @@ struct LocalDeleteOrchestratorTests {
         #expect(await deleter.calls.isEmpty)
         let entries = try await journal.readAll()
         #expect(entries.count == 1)
-        guard case .localDeleteAborted = entries[0].event else { Issue.record("expected aborted"); return }
+        guard case .aborted = entries[0].event else { Issue.record("expected aborted"); return }
     }
 
     @Test("user cancel at the system prompt is journaled and rethrown")
@@ -269,7 +269,7 @@ struct LocalDeleteOrchestratorTests {
             _ = try await orch.run(runId: "r3", candidates: [candidate("1")], liveLibraryCount: 10)
         }
         let entries = try await journal.readAll()
-        guard case .localDeleteFailed(_, let message) = entries.last?.event else { Issue.record("expected failed"); return }
+        guard case .failed(_, let message) = entries.last?.event else { Issue.record("expected failed"); return }
         #expect(message.contains("Cancelled"))
     }
 
@@ -292,13 +292,13 @@ struct LocalDeleteOrchestratorTests {
         #expect(try await journal.readAll().isEmpty)
     }
 
-    @Test("local-delete runs never show up as trash runs in JournalReader")
-    func notSummarizedAsTrashRun() async throws {
+    @Test("journal round-trips through its own file")
+    func journalRoundTrip() async throws {
         let journal = tempJournal()
         let orch = LocalDeleteOrchestrator(deleter: FakeDeleter(), journal: journal)
         _ = try await orch.run(runId: "r6", candidates: [candidate("1")], liveLibraryCount: 1000)
-        let entries = try await journal.readAll()
-        #expect(JournalReader.summarize(entries).allSatisfy { $0.status == .inProgress })
-        #expect(JournalReader.recentlyTrashedChecksums(in: entries).isEmpty)
+        let reread = LocalDeleteJournal(path: journal.path)
+        let entries = try await reread.readAll()
+        #expect(entries.map(\.runId) == ["r6", "r6"])
     }
 }

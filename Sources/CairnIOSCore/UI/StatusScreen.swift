@@ -1063,6 +1063,7 @@ public struct StatusScreen: View {
                                 // hero count above it.
                                 .foregroundStyle(t.quiet)
                         }
+                        ReverseDeleteStatusLine() // fork: reverse deletes
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 6) {

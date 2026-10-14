@@ -5,14 +5,6 @@ All notable changes to `cairn` will land here. Format roughly follows [Keep a Ch
 ## [Unreleased]
 
 ### Added
-- Opt-in reverse direction (off by default): Settings → Data & recovery →
-  "Delete on iPhone what's trashed on Immich". Review Immich trash lists
-  photos moved to Immich's trash in the last day, 7 days or 30 days that
-  are still on the iPhone, matched by SHA1. Nothing is deleted until you
-  tap Delete and confirm the iOS prompt; photos go to Recently Deleted.
-  Skips photos cairn itself trashed, excluded photos, unverified cache
-  entries, and edited photos whose original is still on Immich. Refuses
-  batches over 10% of the library (above 25 items). Journaled locally.
 - Automated App Store screenshot capture via `make screenshots`. The UITest
   bundle drives the app through Status / Pending Review / Runs / Settings /
   Setup Welcome states with a fixture-mode launch arg that swaps real

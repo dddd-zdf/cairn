@@ -374,50 +374,6 @@ linked video UUIDs in every delete batch —
 visibility needs an elevated-permissions flow cairn's API key
 doesn't have; tooling skips it.
 
-## Reverse direction (Immich trash → iPhone), opt-in
-
-Off by default (`CairnSettings.mirrorServerTrashToPhone`). Manual only:
-Settings → Data & recovery → Review Immich trash. Never runs from sync or
-background refresh.
-
-- **Server side.** `ImmichClient.listTrashedAssets(trashedAfter:)` —
-  `search/metadata` with the flat `trashedAfter` + `withDeleted` +
-  `visibility` fields, iterating `timeline` and `archive`. Immich 3.2
-  deprecated these in favor of `filter.trashedAt` + cursor paging; the
-  flat fields still work on 3.3 and the new shape doesn't exist before
-  3.2, so the client stays on the flat form like every other call.
-  `hidden` isn't queried: deleting a Live Photo on the web trashes only
-  the still (no cascade), so the still is the signal.
-- **Matching.** `ServerTrashMatcher` (pure, in Core). A live phone asset
-  is a candidate when one of its *current* `LocalHashStore` checksums
-  equals a trashed primary's checksum. Skipped, in order: any checksum
-  cairn itself trashed (the user recovered it on the phone); excluded;
-  matched checksum not in this account's scope-filtered `ObservedStore`;
-  imputed cache entry; edited since first observed and none of the
-  retired first-observed checksums is in the trashed set (only the edit
-  was trashed — keep the phone copy, which still holds the original).
-  Trashing only `SHA1_O` on the web never matches, since current bytes
-  are `SHA1_E`.
-- **Limit.** `ServerTrashMatcher.evaluate`: refuse when the live library
-  is empty, or when the batch is over 25 and over 10% of live
-  user-library assets. Checked in the sheet and again in
-  `LocalDeleteOrchestrator` before PhotoKit is called.
-- **Delete.** `LocalAssetDeleter` (Core protocol) →
-  `PhotoKitLocalAssetDeleter`: one `performChanges` with
-  `PHAssetChangeRequest.deleteAssets`, user-library + `canPerform(.delete)`
-  assets only. iOS shows its own prompt; declining maps to
-  `LocalDeleteError.userCancelled`. Items go to Recently Deleted.
-- **Journal.** `localDeletePlanned` / `localDeleteSucceeded` /
-  `localDeleteFailed` / `localDeleteAborted`. Not trash runs:
-  `JournalReader.summarize` ignores them, so they don't appear in Runs;
-  the Status journal tail shows them as `phone.*`.
-- **Feedback loop.** The PhotoKit delete fires
-  `deletedLocalIdentifiers`, so the forward pipeline confirms those
-  checksums. Harmless: the engine drops `isTrashed` server assets from
-  candidates. If the user later restores the asset on Immich, the
-  forward direction will propose trashing it again after quarantine,
-  same as any phone deletion.
-
 ## Edit semantics (PhotoKit ↔ Immich asymmetry)
 
 This is the trickiest reasoning in the codebase and the most

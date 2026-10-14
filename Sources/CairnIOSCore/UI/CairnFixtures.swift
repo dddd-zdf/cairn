@@ -687,27 +687,6 @@ public enum CairnFixtures {
                 if confirmedCL > 0     { parts.append("conf-cl=\(confirmedCL)") }
                 if confirmedOrphan > 0 { parts.append("conf-orph=\(confirmedOrphan)") }
                 message = parts.isEmpty ? "no transitions" : parts.joined(separator: " · ")
-            case .localDeletePlanned(let targets):
-                eventName = "phone.plan"
-                glyph = "list.bullet"
-                severity = .info
-                message = "\(targets.count) photo\(targets.count == 1 ? "" : "s") trashed on Immich"
-            case .localDeleteSucceeded(let ids, let durationMs):
-                eventName = "phone.delete"
-                glyph = "iphone"
-                severity = .ok
-                let durSuffix = formatDurationSuffix(durationMs)
-                message = "\(ids.count) moved to Recently Deleted\(durSuffix)"
-            case .localDeleteFailed(let ids, let msg):
-                eventName = "phone.fail"
-                glyph = "xmark.octagon"
-                severity = .error
-                message = "\(ids.count) — \(msg.prefix(60))"
-            case .localDeleteAborted(let reason):
-                eventName = "phone.abort"
-                glyph = "exclamationmark.triangle"
-                severity = .error
-                message = String(reason.prefix(80))
             }
             return JournalTailEntry(
                 time: time,
