@@ -232,7 +232,7 @@ public protocol LocalAssetDeleter: Sendable {
     func deleteAssets(localIdentifiers: [String]) async throws -> [String]
 }
 
-public enum LocalDeleteError: Error, Equatable, CustomStringConvertible {
+public enum LocalDeleteError: LocalizedError, Equatable, CustomStringConvertible {
     case userCancelled
     case failed(String)
 
@@ -242,4 +242,6 @@ public enum LocalDeleteError: Error, Equatable, CustomStringConvertible {
         case .failed(let message): return message
         }
     }
+
+    public var errorDescription: String? { description }
 }

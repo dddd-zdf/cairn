@@ -139,7 +139,7 @@ public final class ReverseDeleteController {
             } catch LocalDeleteError.userCancelled {
                 reviewState = .loaded(review)
             } catch {
-                reviewState = .error(String(describing: error))
+                reviewState = .error(error.localizedDescription)
             }
         }
     }
@@ -192,11 +192,14 @@ public final class ReverseDeleteController {
             #endif
             lastCheckedAt = nil
             defaults.removeObject(forKey: Keys.lastCheckedAt)
+            // Check now so the count shows without waiting for a sync.
+            // Reschedules the reminder itself when it succeeds.
+            await syncDidFinish()
         } else {
             pendingCount = 0
             defaults.set(0, forKey: Keys.pendingCount)
+            await refreshReminder()
         }
-        await refreshReminder()
     }
 
     private func refreshReminder() async {

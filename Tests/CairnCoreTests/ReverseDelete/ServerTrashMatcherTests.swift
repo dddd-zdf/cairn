@@ -190,6 +190,12 @@ struct ServerTrashMatcherTests {
         }
     }
 
+    @Test("LocalDeleteError shows its own message, not a generic one")
+    func errorMessage() {
+        #expect((LocalDeleteError.failed("boom") as Error).localizedDescription == "boom")
+        #expect((LocalDeleteError.userCancelled as Error).localizedDescription.contains("Cancelled"))
+    }
+
     @Test("zero candidates proceed")
     func safetyZero() {
         #expect(ServerTrashMatcher.evaluate(candidateCount: 0, liveLibraryCount: 0) == .proceed)

@@ -58,9 +58,11 @@ public struct ReverseDeleteSettingsRows: View {
 
     private var reminderTime: Binding<Date> {
         Binding(
+            // Wall-clock hour/minute, not startOfDay + offset, which is an
+            // hour off on daylight-saving change days.
             get: {
-                Calendar.current.startOfDay(for: Date())
-                    .addingTimeInterval(Double(controller.reminderMinuteOfDay) * 60)
+                let m = controller.reminderMinuteOfDay
+                return Calendar.current.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: Date()) ?? Date()
             },
             set: { date in
                 let c = Calendar.current.dateComponents([.hour, .minute], from: date)

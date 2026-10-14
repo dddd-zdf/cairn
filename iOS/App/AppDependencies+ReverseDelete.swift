@@ -15,7 +15,7 @@ extension AppDependencies {
                 return await MainActor.run { self.immichClient != nil && self.journal != nil }
             },
             find: { [weak self] lookbackDays in
-                guard let self else { return .empty }
+                guard let self else { throw CancellationError() }
                 return try await self.computeServerTrashReview(lookbackDays: lookbackDays)
             },
             delete: { [weak self] candidates in
@@ -39,7 +39,11 @@ extension AppDependencies {
         guard let client = immichClient,
               let observed = observedStore,
               let exclusions = exclusionStore,
-              let journal else { return .empty }
+              let journal else {
+            // Not "nothing waiting": a fake empty result would clear the
+            // pending count and reminder.
+            throw LocalDeleteError.failed("cairn isn't connected to Immich yet.")
+        }
         let scope = model.settings.indexingScope
         let since = Date().addingTimeInterval(-Double(lookbackDays) * 86_400)
         let trashed = try await client.listTrashedAssets(trashedAfter: since)
