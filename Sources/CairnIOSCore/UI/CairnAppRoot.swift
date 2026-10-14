@@ -771,6 +771,10 @@ public struct CairnAppRoot: View {
                     model.missedDeletionsState = .idle
                     model.presentedSheet = .missedDeletions
                 },
+                onOpenServerTrashReview: {
+                    model.serverTrashReviewState = .idle
+                    model.presentedSheet = .serverTrashReview
+                },
                 onFireBackgroundRefresh: {
                     Task { await model.actions.simulateBackgroundRefresh() }
                 },
@@ -1027,6 +1031,52 @@ public struct CairnAppRoot: View {
                     }
                 },
                 onDismissOne: { _ in }
+            )
+            .cairnTheme(palette)
+        case .serverTrashReview:
+            ServerTrashReviewSheet(
+                state: model.serverTrashReviewState,
+                onClose: {
+                    model.presentedSheet = nil
+                    model.serverTrashReviewState = .idle
+                },
+                onScan: { lookbackDays in
+                    model.serverTrashReviewState = .scanning
+                    Task { @MainActor in
+                        do {
+                            let review = try await model.actions.findServerTrashMatches(lookbackDays)
+                            model.serverTrashReviewState = .loaded(review)
+                        } catch {
+                            model.serverTrashReviewState = .error(error.localizedDescription)
+                        }
+                    }
+                },
+                onDelete: { candidates in
+                    guard case .loaded(let review) = model.serverTrashReviewState else { return }
+                    model.serverTrashReviewState = .deleting(review)
+                    Task { @MainActor in
+                        do {
+                            let deleted = try await model.actions.deleteServerTrashMatches(candidates)
+                            model.serverTrashReviewState = .loaded(review.removing(Set(deleted)))
+                        } catch LocalDeleteError.userCancelled {
+                            model.serverTrashReviewState = .loaded(review)
+                        } catch {
+                            model.serverTrashReviewState = .error(String(describing: error))
+                        }
+                    }
+                },
+                onKeep: { candidates in
+                    guard case .loaded(let review) = model.serverTrashReviewState else { return }
+                    Task { @MainActor in
+                        // Deduped: `exclude` builds a uniqueKeysWithValues
+                        // dictionary, and duplicate photos share checksums.
+                        let checksums = Array(Set(candidates.flatMap { $0.checksums.map(\.base64) })).sorted()
+                        let filenames = candidates.compactMap(\.serverAsset.originalFileName)
+                        let runId = "keep-on-phone-\(ISO8601DateFormatter().string(from: Date()))"
+                        try? await model.actions.exclude(checksums, filenames, runId)
+                        model.serverTrashReviewState = .loaded(review.removing(Set(candidates.map(\.localIdentifier))))
+                    }
+                }
             )
             .cairnTheme(palette)
         case .sessionSignIn:

@@ -248,6 +248,10 @@ public enum JournalReader {
                 }
             case .tagApplied, .assetsExcluded, .pendingReview:
                 break
+            case .localDeletePlanned, .localDeleteSucceeded, .localDeleteFailed, .localDeleteAborted:
+                // Phone-side deletes have no Immich trash run to
+                // summarize; the Status journal tail renders them.
+                break
             case .syncStarted, .syncCompleted, .syncTransitions:
                 // Reconciliation summary / per-source transition counts
                 // / sync-trigger marker — not a trash run, not a

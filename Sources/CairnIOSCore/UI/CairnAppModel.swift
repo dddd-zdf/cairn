@@ -792,6 +792,19 @@ public final class CairnAppModel {
         case error(String)
     }
 
+    /// State of Settings → Recovery → Review Immich trash (the reverse
+    /// direction). Same lifecycle as `missedDeletionsState`, plus
+    /// `deleting` while iOS shows its confirmation prompt.
+    public var serverTrashReviewState: ServerTrashReviewState = .idle
+
+    public enum ServerTrashReviewState: Sendable, Equatable {
+        case idle
+        case scanning
+        case loaded(ServerTrashReview)
+        case deleting(ServerTrashReview)
+        case error(String)
+    }
+
     /// Count of items in `ConfirmedDeletedStore` still within the
     /// quarantine window. Populated from the store directly at
     /// bootstrap and after each sync/trash, so the Status pending
@@ -931,6 +944,9 @@ public final class CairnAppModel {
         /// device. Manual flow (not auto-running) because the signal
         /// is filename-based, less precise than the SHA1 pipeline.
         case missedDeletions
+        /// Settings → Recovery → Review Immich trash. Reverse direction:
+        /// phone assets whose Immich copy is in Immich's trash.
+        case serverTrashReview
         /// Settings → Advanced → "Session sign-in for incremental
         /// sync" — email/password form that calls
         /// `signInForSession`, persists the access token, and rebuilds
@@ -949,6 +965,7 @@ public final class CairnAppModel {
             case .pendingTrashes: "pending-trashes"
             case .sessionSignIn: "session-sign-in"
             case .missedDeletions: "missed-deletions"
+            case .serverTrashReview: "server-trash-review"
             }
         }
     }
@@ -1451,6 +1468,17 @@ public struct CairnAppActions: Sendable {
     /// reconciliation, the user has already reviewed each one.
     public var trashMissedDeletions: @Sendable (_ assets: [ServerAsset]) async throws -> Void
 
+    /// Reverse direction: list Immich assets trashed in the last
+    /// `lookbackDays` and match them to live phone assets via
+    /// `ServerTrashMatcher`. No side effects.
+    public var findServerTrashMatches: @Sendable (_ lookbackDays: Int) async throws -> ServerTrashReview
+
+    /// Delete the reviewed phone assets through `LocalDeleteOrchestrator`.
+    /// Returns the localIdentifiers iOS actually deleted. Throws
+    /// `LocalDeleteError.userCancelled` when the user declines the
+    /// system prompt.
+    public var deleteServerTrashMatches: @Sendable (_ candidates: [LocalDeleteCandidate]) async throws -> [String]
+
     public init(
         requestSync: @escaping @Sendable (JournalEntry.SyncTrigger?) async throws -> Void = { _ in },
         confirmTrash: @escaping @Sendable () async throws -> Void = {},
@@ -1497,6 +1525,8 @@ public struct CairnAppActions: Sendable {
         discardPendingTrash: @escaping @Sendable (UUID) async -> Void = { _ in },
         findMissedDeletions: @escaping @Sendable (Date?, Date?, Bool) async throws -> [ServerAsset] = { _, _, _ in [] },
         trashMissedDeletions: @escaping @Sendable ([ServerAsset]) async throws -> Void = { _ in },
+        findServerTrashMatches: @escaping @Sendable (Int) async throws -> ServerTrashReview = { _ in .empty },
+        deleteServerTrashMatches: @escaping @Sendable ([LocalDeleteCandidate]) async throws -> [String] = { $0.map(\.localIdentifier) },
         simulateBackgroundRefresh: @escaping @Sendable () async -> Void = {},
         signInForSession: @escaping @Sendable (String, String) async -> SessionSignInResult = { _, _ in .success },
         signOutSession: @escaping @Sendable () async -> Void = {},
@@ -1545,6 +1575,8 @@ public struct CairnAppActions: Sendable {
         self.discardPendingTrash = discardPendingTrash
         self.findMissedDeletions = findMissedDeletions
         self.trashMissedDeletions = trashMissedDeletions
+        self.findServerTrashMatches = findServerTrashMatches
+        self.deleteServerTrashMatches = deleteServerTrashMatches
         self.simulateBackgroundRefresh = simulateBackgroundRefresh
         self.signInForSession = signInForSession
         self.replaceAPIKey = replaceAPIKey
@@ -1554,4 +1586,49 @@ public struct CairnAppActions: Sendable {
     /// All-no-op closures with successful default returns. Use in previews
     /// to render `CairnAppRoot` without a host.
     public static let preview: CairnAppActions = CairnAppActions()
+}
+
+/// Result of one reverse-direction scan, ready for the review sheet.
+/// `liveLibraryCount` feeds `ServerTrashMatcher.evaluate`, which the sheet
+/// re-runs as the user skips rows.
+public struct ServerTrashReview: Sendable, Equatable {
+    public let candidates: [LocalDeleteCandidate]
+    public let skipped: [ServerTrashSkipReason: Int]
+    public let trashedOnServer: Int
+    public let lookbackDays: Int
+    public let liveLibraryCount: Int
+
+    public init(
+        candidates: [LocalDeleteCandidate],
+        skipped: [ServerTrashSkipReason: Int] = [:],
+        trashedOnServer: Int = 0,
+        lookbackDays: Int = 30,
+        liveLibraryCount: Int = 0
+    ) {
+        self.candidates = candidates
+        self.skipped = skipped
+        self.trashedOnServer = trashedOnServer
+        self.lookbackDays = lookbackDays
+        self.liveLibraryCount = liveLibraryCount
+    }
+
+    public static let empty = ServerTrashReview(candidates: [])
+
+    /// Non-nil when a batch of `count` would be refused.
+    public func blockedReason(forCount count: Int) -> String? {
+        if case .abort(let reason) = ServerTrashMatcher.evaluate(candidateCount: count, liveLibraryCount: liveLibraryCount) {
+            return reason
+        }
+        return nil
+    }
+
+    public func removing(_ localIdentifiers: Set<String>) -> ServerTrashReview {
+        ServerTrashReview(
+            candidates: candidates.filter { !localIdentifiers.contains($0.localIdentifier) },
+            skipped: skipped,
+            trashedOnServer: trashedOnServer,
+            lookbackDays: lookbackDays,
+            liveLibraryCount: liveLibraryCount
+        )
+    }
 }

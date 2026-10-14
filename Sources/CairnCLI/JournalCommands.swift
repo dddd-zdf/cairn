@@ -194,6 +194,17 @@ struct JournalShow: AsyncParsableCommand {
             if confCL > 0  { parts.append("confirmedFromChangeLog=\(confCL)") }
             if confOrph > 0 { parts.append("confirmedFromOrphanSweep=\(confOrph)") }
             return ("syncTransitions", parts.isEmpty ? "(no transitions)" : parts.joined(separator: " "))
+        case .localDeletePlanned(let targets):
+            let lines = targets.prefix(10).map { "\($0.localIdentifier)  server=\($0.serverAssetId)" }
+            let extra = targets.count > 10 ? "\n… and \(targets.count - 10) more" : ""
+            return ("localDeletePlanned", "\(targets.count) phone asset(s)\n\(lines.joined(separator: "\n"))\(extra)")
+        case .localDeleteSucceeded(let ids, let durationMs):
+            let dur = durationMs.map { "  dur=\($0)ms" } ?? ""
+            return ("localDeleteSucceeded", "\(ids.count) phone asset(s)\(dur)")
+        case .localDeleteFailed(let ids, let msg):
+            return ("localDeleteFailed", "\(ids.count) phone asset(s)\nerror: \(msg)")
+        case .localDeleteAborted(let reason):
+            return ("localDeleteAborted", reason)
         }
     }
 }

@@ -1,0 +1,64 @@
+name: Fork CI
+
+# Fork-only (dddd-zdf/cairn): builds and tests feature branches on push,
+# since ci.yml only runs for main and pull requests. Also compiles the iOS
+# app target, which `swift build` doesn't cover. Drop this file before
+# proposing anything upstream.
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift-test:
+    name: swift build + swift test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: swift --version
+      - run: swift build
+      - name: swift test
+        # Same signal-5 teardown tolerance as ci.yml.
+        run: |
+          set +e -o pipefail
+          swift test 2>&1 | tee /tmp/swifttest.log
+          ec=${PIPESTATUS[0]}
+          if [ "$ec" -eq 0 ]; then exit 0; fi
+          if grep -qE "recorded an issue|✘ Test" /tmp/swifttest.log; then
+            echo "::error::swift test had real test failures"
+            exit 1
+          fi
+          if grep -qi "exited with unexpected signal code 5" /tmp/swifttest.log; then
+            echo "::warning::tolerating known signal-5 teardown crash"
+            exit 0
+          fi
+          exit 1
+
+  ios-build:
+    name: iOS app build (simulator, unsigned)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: brew install xcodegen
+      - name: Generate project
+        working-directory: iOS
+        run: xcodegen generate
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project iOS/Cairn.xcodeproj -scheme Cairn \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            build 2>&1 | tee /tmp/xcodebuild.log | grep -E "error:|warning: .*(ServerTrash|LocalDelete|PhotoKitLocalAssetDeleter)|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" /tmp/xcodebuild.log

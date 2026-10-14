@@ -100,6 +100,9 @@ public struct SettingsScreen: View {
     /// (CairnAppRoot) sets `model.presentedSheet = .missedDeletions`
     /// and kicks off the scan.
     public let onOpenMissedDeletions: () -> Void
+    /// Opens the reverse-direction review sheet (Immich trash → iPhone).
+    /// Only reachable while `settings.mirrorServerTrashToPhone` is on.
+    public let onOpenServerTrashReview: () -> Void
     /// DEBUG-only: trigger the BG refresh handler path without iOS
     /// scheduling. Surfaced as a row under Settings → Advanced when
     /// the build is Debug. In Release the closure is no-op + the row
@@ -225,6 +228,7 @@ public struct SettingsScreen: View {
         onImportData: @escaping (URL, Bool) -> Void = { _, _ in },
         onOpenAlbumPicker: @escaping () -> Void = {},
         onOpenMissedDeletions: @escaping () -> Void = {},
+        onOpenServerTrashReview: @escaping () -> Void = {},
         onFireBackgroundRefresh: @escaping () -> Void = {},
         onOpenSessionSignIn: @escaping () -> Void = {},
         onSignOutSession: @escaping () -> Void = {},
@@ -267,6 +271,7 @@ public struct SettingsScreen: View {
         self.onImportData = onImportData
         self.onOpenAlbumPicker = onOpenAlbumPicker
         self.onOpenMissedDeletions = onOpenMissedDeletions
+        self.onOpenServerTrashReview = onOpenServerTrashReview
         self.onFireBackgroundRefresh = onFireBackgroundRefresh
         self.onOpenSessionSignIn = onOpenSessionSignIn
         self.onSignOutSession = onSignOutSession
@@ -1758,6 +1763,21 @@ public struct SettingsScreen: View {
                         chevron: true,
                         onTap: onOpenMissedDeletions
                     )
+                    RowDivider()
+                    ToggleRow(
+                        "Delete on iPhone what's trashed on Immich",
+                        sub: "Off by default. When on, you can review photos moved to Immich's trash (for example, deleted on the web) and remove them from this iPhone. Nothing is deleted until you confirm, and iOS asks once more. Deleted photos stay in Recently Deleted for 30 days.",
+                        value: $settings.mirrorServerTrashToPhone
+                    )
+                    if settings.mirrorServerTrashToPhone {
+                        RowDivider()
+                        KeyValRow(
+                            "Review Immich trash",
+                            value: { Text("Scan server").foregroundStyle(t.infoInk) },
+                            chevron: true,
+                            onTap: onOpenServerTrashReview
+                        )
+                    }
                 }
             }
             .padding(.bottom, 4)

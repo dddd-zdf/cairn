@@ -446,6 +446,18 @@ public struct JournalEntry: Codable, Sendable, Equatable {
             confirmedFromOrphanSweep: Int
         )
 
+        // Reverse direction: Immich trash → phone Recently Deleted. Kept
+        // separate from the trash-run events so `JournalReader.summarize`
+        // never mistakes a phone delete for an Immich trash run.
+        /// Write-ahead record of the phone assets about to be deleted.
+        case localDeletePlanned(targets: [LocalDeleteTarget])
+        /// iOS accepted the delete; ids moved to Recently Deleted.
+        case localDeleteSucceeded(localIdentifiers: [String], durationMs: Int?)
+        /// The delete failed or the user declined the system prompt.
+        case localDeleteFailed(localIdentifiers: [String], message: String)
+        /// Safety limit refused the batch before PhotoKit was called.
+        case localDeleteAborted(reason: String)
+
         /// Per-case Codable customization for `syncTransitions`. The
         /// Swift identifier rename (`confirmedFromPhotoKit` →
         /// `confirmedFromChangeLog`) keeps the layer's name portable;
@@ -459,6 +471,30 @@ public struct JournalEntry: Codable, Sendable, Equatable {
             case editsQuarantined
             case confirmedFromChangeLog = "confirmedFromPhotoKit"
             case confirmedFromOrphanSweep
+        }
+    }
+
+    /// One phone asset captured at local-delete plan time. The server
+    /// fields describe the Immich asset whose trashing triggered it.
+    public struct LocalDeleteTarget: Codable, Sendable, Equatable {
+        public let localIdentifier: String
+        public let checksums: [String]
+        public let serverAssetId: String
+        public let originalFileName: String?
+        public let fileCreatedAt: Date?
+
+        public init(
+            localIdentifier: String,
+            checksums: [String],
+            serverAssetId: String,
+            originalFileName: String? = nil,
+            fileCreatedAt: Date? = nil
+        ) {
+            self.localIdentifier = localIdentifier
+            self.checksums = checksums
+            self.serverAssetId = serverAssetId
+            self.originalFileName = originalFileName
+            self.fileCreatedAt = fileCreatedAt
         }
     }
 

@@ -322,6 +322,17 @@ struct CairnSettingsTests {
         }
     }
 
+    @Test("mirrorServerTrashToPhone is off by default and for legacy JSON, and round-trips")
+    func mirrorServerTrashToPhoneDefaultsOff() throws {
+        #expect(CairnSettings.defaults.mirrorServerTrashToPhone == false)
+        let legacy = try JSONDecoder().decode(CairnSettings.self, from: Data(#"{"quarantineDays": 14}"#.utf8))
+        #expect(legacy.mirrorServerTrashToPhone == false)
+        var on = CairnSettings()
+        on.mirrorServerTrashToPhone = true
+        let decoded = try JSONDecoder().decode(CairnSettings.self, from: JSONEncoder().encode(on))
+        #expect(decoded.mirrorServerTrashToPhone == true)
+    }
+
     @Test("legacy JSON without indexingScope decodes as .fullLibrary")
     func legacyJSONMissingIndexingScopeUsesFullLibrary() throws {
         let legacyJSON = """
