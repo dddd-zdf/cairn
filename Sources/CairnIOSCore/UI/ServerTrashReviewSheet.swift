@@ -1,7 +1,7 @@
 import SwiftUI
 import CairnCore
 
-/// Settings → Recovery → Review Immich trash. The reverse direction:
+/// Settings → Data & recovery → Review Immich trash. The reverse direction:
 /// photos moved to Immich's trash (for example, deleted on the web) that
 /// are still on this iPhone. The host runs `ServerTrashMatcher`; this
 /// screen lists the matches and hands the reviewed set back for
@@ -274,8 +274,8 @@ public struct ServerTrashReviewSheet: View {
                     .font(.cairnScaled(size: 14, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(t.danger)
-                    .foregroundStyle(t.dangerInk)
+                    .background(t.primary)
+                    .foregroundStyle(t.primaryInk)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .opacity(blocked ? 0.4 : 1)
             }

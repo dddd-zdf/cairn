@@ -387,8 +387,8 @@ public struct MissedDeletionsSheet: View {
                     .font(.cairnScaled(size: 14, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(t.danger)
-                    .foregroundStyle(t.dangerInk)
+                    .background(t.primary)
+                    .foregroundStyle(t.primaryInk)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(.plain)

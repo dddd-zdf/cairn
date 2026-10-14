@@ -45,7 +45,7 @@ own team under Signing (free personal team), change the bundle id if it
 clashes, run on the phone. Use a test Immich account or a few throwaway
 photos.
 
-1. Settings → Recovery: toggle is off by default; "Review Immich trash"
+1. Settings → Data & recovery: toggle is off by default; "Review Immich trash"
    row only appears when on.
 2. Take 3 new photos, let Immich upload them, run a cairn sync so they're
    hashed. Trash 2 on the Immich web. Review Immich trash (last day):

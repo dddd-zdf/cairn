@@ -5,7 +5,7 @@ All notable changes to `cairn` will land here. Format roughly follows [Keep a Ch
 ## [Unreleased]
 
 ### Added
-- Opt-in reverse direction (off by default): Settings → Recovery →
+- Opt-in reverse direction (off by default): Settings → Data & recovery →
   "Delete on iPhone what's trashed on Immich". Review Immich trash lists
   photos moved to Immich's trash in the last day, 7 days or 30 days that
   are still on the iPhone, matched by SHA1. Nothing is deleted until you

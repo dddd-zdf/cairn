@@ -792,7 +792,7 @@ public final class CairnAppModel {
         case error(String)
     }
 
-    /// State of Settings → Recovery → Review Immich trash (the reverse
+    /// State of Settings → Data & recovery → Review Immich trash (the reverse
     /// direction). Same lifecycle as `missedDeletionsState`, plus
     /// `deleting` while iOS shows its confirmation prompt.
     public var serverTrashReviewState: ServerTrashReviewState = .idle
@@ -944,7 +944,7 @@ public final class CairnAppModel {
         /// device. Manual flow (not auto-running) because the signal
         /// is filename-based, less precise than the SHA1 pipeline.
         case missedDeletions
-        /// Settings → Recovery → Review Immich trash. Reverse direction:
+        /// Settings → Data & recovery → Review Immich trash. Reverse direction:
         /// phone assets whose Immich copy is in Immich's trash.
         case serverTrashReview
         /// Settings → Advanced → "Session sign-in for incremental

@@ -377,7 +377,7 @@ doesn't have; tooling skips it.
 ## Reverse direction (Immich trash → iPhone), opt-in
 
 Off by default (`CairnSettings.mirrorServerTrashToPhone`). Manual only:
-Settings → Recovery → Review Immich trash. Never runs from sync or
+Settings → Data & recovery → Review Immich trash. Never runs from sync or
 background refresh.
 
 - **Server side.** `ImmichClient.listTrashedAssets(trashedAfter:)` —
