@@ -187,7 +187,11 @@ public struct RunsScreen: View {
                     .foregroundStyle(t.text)
                     .padding(.bottom, 6)
 
-                Text("Every sync lands here — completed, aborted, or restored — with the candidate list and the journal of API calls. You can restore any trashed batch while Immich still has it.")
+                // Copy diverges from screens/runs.jsx: syncs that trash
+                // nothing are filtered out (`RunFixture.from` drops
+                // `.inProgress`), so "every sync lands here" left users
+                // thinking the tab was broken after clean syncs.
+                Text("A run appears here when cairn trashes photos on Immich — completed, aborted, or restored — with the candidate list and the journal of API calls. Syncs that find nothing to trash only show on Status. You can restore any trashed batch while Immich still has it.")
                     .font(.cairnScaled(size: 13))
                     .foregroundStyle(t.textMuted)
                     .multilineTextAlignment(.center)
@@ -201,7 +205,7 @@ public struct RunsScreen: View {
 
                 // CTA (verbatim, screens/runs.jsx:67).
                 Button(action: onStartSync) {
-                    Text("Start a sync from Status")
+                    Text("Go to Status")
                         .font(.cairnScaled(size: 16, weight: .semibold))
                         .frame(minWidth: 200)
                         .padding(.vertical, 14)
