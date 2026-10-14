@@ -920,8 +920,11 @@ public struct StatusScreen: View {
     ///     background-hash backlog
     ///   - above-cap: in the deferred queue, exceeds the user's iCloud
     ///     download ceiling → permanent unless the cap is raised
-    ///   - untracked: visible in the library but neither indexed nor
-    ///     in the queue → coverage gap, can't say what'll happen
+    ///   - skipped: counted in "On iPhone" (broad filter: hidden,
+    ///     iCloud Shared, iTunes-synced) but outside the narrow
+    ///     user-library filter hashing uses. The untracked sweep runs
+    ///     every sync, so after one completes the remainder is these
+    ///     by-design skips — never "not yet processed".
     private func upToDateSubline(indexed: Int, total: Int) -> Text {
         let count = Text("\(indexed) of \(total)").bold()
         if indexed >= total {
@@ -930,12 +933,12 @@ public struct StatusScreen: View {
         let gap = max(0, total - indexed)
         let queued = deferredQueue.count
         let aboveCap = deferredQueue.aboveCeiling
-        let untracked = max(0, gap - queued - aboveCap)
+        let skipped = max(0, gap - queued - aboveCap)
 
         var clauses: [String] = []
         if queued > 0 { clauses.append("\(queued) queued for background hashing") }
         if aboveCap > 0 { clauses.append("\(aboveCap) above your size cap") }
-        if untracked > 0 { clauses.append("\(untracked) not yet processed") }
+        if skipped > 0 { clauses.append("\(skipped) hidden or shared-album, not managed") }
 
         let suffix = clauses.isEmpty ? "." : " — " + clauses.joined(separator: ", ") + "."
         return Text("Nothing new to trash. ") + count + Text(" assets indexed") + Text(suffix)
