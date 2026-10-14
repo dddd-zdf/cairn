@@ -8,7 +8,7 @@
     { "method": "GET",    "path": "/assets/statistics",    "used_by": "assetStatistics (server asset count)" },
     { "method": "GET",    "path": "/assets/{id}",          "used_by": "asset detail" },
     { "method": "DELETE", "path": "/assets",               "used_by": "trash assets" },
-    { "method": "POST",   "path": "/search/metadata",      "used_by": "listAllAssets / search by filename" },
+    { "method": "POST",   "path": "/search/metadata",      "used_by": "listAllAssets / search by filename / listTrashedAssets (trashedAfter)" },
     { "method": "POST",   "path": "/auth/login",           "used_by": "session sign-in (incremental sync)" },
     { "method": "POST",   "path": "/auth/logout",          "used_by": "session sign-out" },
     { "method": "GET",    "path": "/tags",                 "used_by": "list tags" },

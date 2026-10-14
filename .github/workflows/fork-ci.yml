@@ -25,6 +25,9 @@ jobs:
           xcode-version: latest-stable
       - run: swift --version
       - run: swift build
+      - name: swift test (reverse-deletes suites only, no crash tolerance)
+        if: ${{ hashFiles('Sources/CairnCore/ServerTrashMatcher.swift') != '' }}
+        run: swift test --filter "ServerTrashMatcher|LocalDeleteOrchestrator|ImmichClientTrashed|CairnSettingsTests"
       - name: swift test
         # Same signal-5 teardown tolerance as ci.yml.
         run: |
@@ -44,12 +47,14 @@ jobs:
 
   ios-build:
     name: iOS app build (simulator, unsigned)
-    runs-on: macos-15
+    # Newest image: the app target needs a recent Swift 6 toolchain.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+      - run: swift --version
       - run: brew install xcodegen
       - name: Generate project
         working-directory: iOS
