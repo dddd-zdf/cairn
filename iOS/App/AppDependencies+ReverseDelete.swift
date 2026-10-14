@@ -94,13 +94,34 @@ extension AppDependencies {
         )
     }
 
+    /// Phone-delete journal next to cairn's journal, in the same
+    /// per-account directory.
+    private func localDeleteJournal() async -> LocalDeleteJournal? {
+        guard let journal else { return nil }
+        let dir = await journal.path.deletingLastPathComponent()
+        return LocalDeleteJournal(path: dir.appending(path: LocalDeleteJournal.fileName))
+    }
+
+    /// Adds phone-delete runs to the Runs tab. Hook: end of
+    /// `refreshRunsList()`, and after every phone delete.
+    func mergePhoneDeleteRuns() async {
+        guard let localJournal = await localDeleteJournal() else { return }
+        let entries = (try? await localJournal.readAll()) ?? []
+        // Same per-key cutoff cairn's own runs use.
+        let cutoff = currentKeyActivatedAt ?? .distantPast
+        let phoneRuns = PhoneDeleteRun.summarize(entries.filter { $0.timestamp >= cutoff })
+        let merged = PhoneDeleteRuns.merge(phoneRuns, into: model.runs, assets: model.runAssets)
+        model.runs = merged.runs
+        model.runAssets = merged.assets
+    }
+
     private func deleteServerTrashMatches(_ candidates: [LocalDeleteCandidate]) async throws -> [String] {
-        guard let journal, !candidates.isEmpty else { return [] }
+        guard let localJournal = await localDeleteJournal(), !candidates.isEmpty else { return [] }
+        // Whatever happens below has been journaled; show it in Runs.
+        defer { Task { await self.mergePhoneDeleteRuns() } }
         let liveCount = await Task.detached(priority: .userInitiated) {
             PhotoKitLocalAssetDeleter.liveUserLibraryIdentifiers().count
         }.value
-        let journalDir = await journal.path.deletingLastPathComponent()
-        let localJournal = LocalDeleteJournal(path: journalDir.appending(path: LocalDeleteJournal.fileName))
         let runId = "phone-\(ISO8601DateFormatter().string(from: Date()))-\(UUID().uuidString.prefix(8))"
         let summary = try await LocalDeleteOrchestrator(deleter: PhotoKitLocalAssetDeleter(), journal: localJournal).run(
             runId: runId,

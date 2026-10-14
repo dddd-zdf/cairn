@@ -126,6 +126,7 @@ public struct RunDetailSheet: View {
     /// `.restored` state.)
     private var canRestore: Bool {
         run.trashed > 0 && !run.dryRun && run.status != .aborted && run.status != .restored
+            && !run.isPhoneDelete // fork: reverse deletes
     }
 
     private var hasSelection: Bool { !selected.isEmpty }
@@ -169,6 +170,7 @@ public struct RunDetailSheet: View {
     private var expandedCount: Int { selected.count + pairedInSelection }
 
     private var runKind: String {
+        if run.isPhoneDelete { return "iPhone delete" } // fork: reverse deletes
         if run.status == .aborted { return "Aborted run" }
         if run.status == .restored { return "Restored run" }
         if run.dryRun { return "Dry-run" }
@@ -176,6 +178,7 @@ public struct RunDetailSheet: View {
     }
 
     private var headerTitle: String {
+        if run.isPhoneDelete { return run.phoneDeleteHeaderTitle } // fork: reverse deletes
         if run.status == .aborted {
             // Differentiate safety-rail aborts (the user-intent-refused
             // case) from network/unexpected failures. Prior versions
@@ -566,8 +569,10 @@ public struct RunDetailSheet: View {
                 }
                 sectionLabel("Run metadata")
                 metadataCard
+                if !run.isPhoneDelete { // fork: reverse deletes
                 sectionLabel("Server-side breadcrumb")
                 breadcrumbCard
+                } // fork: reverse deletes
                 Spacer(minLength: 8)
             }
         }

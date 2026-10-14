@@ -352,6 +352,7 @@ private struct RunListRow: View {
 
     private var pillLabel: String {
         if run.status == .aborted { return "aborted" }
+        if run.isPhoneDelete { return "iPhone" } // fork: reverse deletes
         if run.dryRun { return "dry-run" }
         if run.restored > 0 && run.trashed == 0 { return "restored" }
         return "trashed"
@@ -364,6 +365,7 @@ private struct RunListRow: View {
     }
 
     private var countLabel: String {
+        if run.isPhoneDelete { return run.status == .aborted ? "0 deleted on iPhone" : "\(run.trashed) deleted on iPhone" } // fork: reverse deletes
         if run.status == .aborted { return "0 trashed" }
         if run.dryRun { return "0 trashed" }
         if run.trashed == 0 { return "no changes" }
@@ -372,6 +374,7 @@ private struct RunListRow: View {
 
     private var iconName: String {
         if run.status == .aborted { return "exclamationmark.triangle.fill" }
+        if run.isPhoneDelete { return "iphone" } // fork: reverse deletes
         if run.dryRun { return "eye" }
         return "trash"
     }

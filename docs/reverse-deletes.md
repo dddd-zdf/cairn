@@ -16,6 +16,7 @@ Sources/CairnCore/ReverseDelete/      pure logic + tests (platform-neutral)
   ServerTrashCheckPolicy.swift        once-a-day check, weekly reminder timing
   LocalDeleteOrchestrator.swift       limit re-check → journal → delete
   LocalDeleteJournal.swift            own JSONL file: phone-delete-journal.jsonl
+  PhoneDeleteRun.swift                journal rows → one summary per run, for Runs
   ImmichClient+TrashedAssets.swift    search/metadata with trashedAfter
 Sources/CairnIOSCore/ReverseDelete/   iOS side
   ReverseDeleteController.swift       settings (UserDefaults, cairn.reverseDelete.*), state, reminder
@@ -24,13 +25,14 @@ Sources/CairnIOSCore/ReverseDelete/   iOS side
   PhotoKitLocalAssetDeleter.swift     PHAssetChangeRequest.deleteAssets
   ServerTrashReminderScheduler.swift  weekly local notification
   ReverseDeleteNotificationRouter.swift  notification tap → review sheet
+  PhoneDeleteRuns.swift               merges phone-delete runs into the Runs tab
 iOS/App/AppDependencies+ReverseDelete.swift   wiring to cairn's stores and client
 Tests/CairnCoreTests/ReverseDelete/   tests
 ```
 
 ## Hooks in upstream files
 
-Every touch of an upstream file is one line marked `// fork: reverse deletes`
+Every touch of an upstream file is a line marked `// fork: reverse deletes`
 (find them with `git grep "fork: reverse deletes"`), except the first:
 
 | File | Change |
@@ -39,7 +41,9 @@ Every touch of an upstream file is one line marked `// fork: reverse deletes`
 | `Sources/CairnIOSCore/UI/CairnAppRoot.swift` | `.reverseDeleteSheet(palette:)` after the main `.sheet` |
 | `Sources/CairnIOSCore/UI/SettingsScreen.swift` | `ReverseDeleteSettingsRows()` in the Recovery card |
 | `Sources/CairnIOSCore/UI/StatusScreen.swift` | `ReverseDeleteStatusLine()` under "Last checked" |
-| `iOS/App/AppDependencies.swift` | `configureReverseDelete()` in `bootstrap()`; `syncDidFinish()` after a successful sync |
+| `Sources/CairnIOSCore/UI/RunsScreen.swift` | phone-delete label, count and icon in the run row |
+| `Sources/CairnIOSCore/UI/RunDetailSheet.swift` | phone-delete kind and title, no Restore, no breadcrumb card |
+| `iOS/App/AppDependencies.swift` | `configureReverseDelete()` in `bootstrap()`; `syncDidFinish()` after a successful sync; `mergePhoneDeleteRuns()` at the end of `refreshRunsList()` |
 | `iOS/App/CairnApp.swift` | `ReverseDeleteNotificationRouter.install()` in `init` |
 
 Not part of the feature: `MissedDeletionsSheet.swift` delete-button
@@ -54,7 +58,7 @@ git rebase upstream/main        # on branch reverse-deletes
 git grep -n "fork: reverse deletes"   # check every hook still sits in the right place
 ```
 
-Conflicts can only be in the six files above. If upstream renamed or
+Conflicts can only be in the eight files above. If upstream renamed or
 moved the surrounding code, re-add the one line in the equivalent spot.
 Then push and let `.github/workflows/fork-ci.yml` run the tests, build
 the app, and produce a fresh unsigned `.ipa` for SideStore.
@@ -120,7 +124,10 @@ again, same as any phone deletion.
 - Its settings live in UserDefaults, not `CairnSettings`, so they aren't
   in cairn's export/import and don't reset with "Reset index".
 - Its journal is a separate file, so phone deletes don't appear in the
-  Status journal tail or the Runs tab.
+  Status journal tail. They do appear in the Runs tab: `PhoneDeleteRuns`
+  merges them into the view model (run ids start with `phone-`), with no
+  Restore button since the photos are in the iPhone's Recently Deleted,
+  not Immich's trash.
 - The controller is a shared singleton and the sheet has its own
   presenter, instead of cairn's `CairnAppModel` / `PresentedSheet`
   pattern.

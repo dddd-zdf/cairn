@@ -3076,6 +3076,7 @@ final class AppDependencies {
             perRun[entry.runId] = bucket
         }
         model.runAssets = perRun
+        await mergePhoneDeleteRuns() // fork: reverse deletes
     }
 
     @MainActor
